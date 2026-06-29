@@ -21,7 +21,7 @@
 
 ## RAG Pipeline Diagram
 
-
+```text
                 ┌─────────────────────────────┐
                 │ Raw Document                │
                 │ (.txt / .pdf / .docx)       │
