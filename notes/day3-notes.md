@@ -19,25 +19,50 @@
 - Missing piece: feeding retrieved chunks + question to Gemini 
   to generate final answer. This is Day 4.
 
-### Pipeline Diagram:
-RAW FILE (.txt / .pdf / .docx)
-|
-v
-[Day 2 Task 1] load_document() --> raw text string
-|
-v
-[Day 2 Task 2] chunk_recursive() --> list of chunk strings
-|
-v
-[Day 3 Task 1] embed_text() --> list of 768-dim vectors
-|
-v
-[Day 3 Task 2] collection.add() --> stored in ChromaDB
+## RAG Pipeline Diagram
 
-USER QUESTION --> embed_query() --> query vector
-|
-v
-collection.query() --> top-K most similar chunks
-|
-v
-[Day 4] Feed chunks + question to Gemini --> Final Answer
+
+                ┌─────────────────────────────┐
+                │ Raw Document                │
+                │ (.txt / .pdf / .docx)       │
+                └─────────────┬───────────────┘
+                              │
+                              ▼
+                   load_document()
+                              │
+                              ▼
+                     Raw Text String
+                              │
+                              ▼
+                  chunk_recursive()
+                              │
+                              ▼
+                  Text Chunks (List)
+                              │
+                              ▼
+                     embed_text()
+                              │
+                              ▼
+               Embedding Vectors (768-D)
+                              │
+                              ▼
+                 ChromaDB collection.add()
+                              │
+                              ▼
+                  Vector Database Storage
+
+
+User Question ──► embed_query() ──► Query Vector
+                                     │
+                                     ▼
+                          ChromaDB collection.query()
+                                     │
+                                     ▼
+                        Top-K Relevant Chunks
+                                     │
+                                     ▼
+                  Gemini + Retrieved Context
+                                     │
+                                     ▼
+                           Final Answer
+```
