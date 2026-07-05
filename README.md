@@ -1,40 +1,38 @@
-# NexusChat — RAG Chatbot (Week 1 & 2 Build)
+# NexusChat — Enterprise RAG Chatbot
 
-A Retrieval-Augmented Generation chatbot built from scratch using
-Google Gemini and ChromaDB. Answers questions from documents with
-cited sources and supports multi-turn conversation.
+Built from scratch over 2 weeks using Google Gemini and ChromaDB.
 
-## What It Does
-- Loads documents in TXT, PDF, and DOCX format
-- Splits documents into searchable chunks
-- Embeds chunks using Gemini embedding model
-- Stores and searches vectors using ChromaDB
-- Generates grounded, cited answers using gemini-1.5-flash
-- Remembers conversation history and resolves follow-up questions
-- Hybrid search (BM25 + Dense) with Reciprocal Rank Fusion
-- Cross-encoder re-ranking for better result ordering
-- Query decomposition for complex multi-part questions
-- Evaluation harness with faithfulness, relevance, and recall metrics
+## Stack
+- Embeddings: Google Gemini (gemini-embedding-001)
+- Vector Store: ChromaDB
+- Generation: Gemini 1.5 Flash
+- Retrieval: Hybrid Search (BM25 + Dense) + RRF
+- Re-ranking: Cross-Encoder (ms-marco-MiniLM-L-6-v2)
+- Backend: FastAPI
+- Memory: Conversation history with query rewriting
 
-## How to Run
-1. Clone this repo and create a virtual environment
-2. pip install -r requirements.txt
-3. Add your GEMINI_API_KEY to .env file
-4. Run: python day5/memory_chatbot.py
+## Features
+- TXT, PDF, DOCX document ingestion
+- Hybrid retrieval with Reciprocal Rank Fusion
+- Cross-encoder re-ranking
+- Query decomposition for complex questions
+- Conversation memory with follow-up resolution
+- Evaluation harness (faithfulness, relevance, recall)
+- REST API with /chat /ingest /health /session endpoints
+
+## Setup
+```bash
+pip install -r requirements.txt
+# Add GEMINI_API_KEY to .env
+python day5/memory_chatbot.py
+```
 
 ## Project Structure
-- day2/ - document ingestion and chunking
-- day3/ - embeddings and vector store
-- day4/ - generation and first complete pipeline
-- day5/ - conversation memory and polished chatbot
-- day6/ - hybrid search with BM25 and RRF
-- day7/ - re-ranking and query decomposition
-- day8/ - evaluation harness and report card
-- notes/ - daily learning notes and reflections
-
-## What I Learned
-Building a RAG system from scratch taught me that retrieval quality
-is the foundation of everything — bad chunks mean bad answers regardless
-of how good the LLM is. Hybrid search and re-ranking meaningfully improve
-results, and evaluation metrics are essential to prove improvements
-rather than just feeling like things got better.
+- day2/ — ingestion + chunking
+- day3/ — embeddings + vector store
+- day4/ — generation + RAG pipeline
+- day5/ — conversation memory
+- day6/ — hybrid search + RRF
+- day7/ — re-ranking + query decomposition
+- day8/ — evaluation metrics
+- day9/ — FastAPI backend
