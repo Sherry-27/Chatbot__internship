@@ -36,7 +36,7 @@ python day5/memory_chatbot.py
 - day7/ — re-ranking + query decomposition
 - day8/ — evaluation metrics
 - day9/ — FastAPI backend
-- day 10: SQLite chat persistence + ChromaDB persistent index
-- day 11: Web chat UI with upload panel
-- day 12: Docker + GitHub Actions CI
-- day 13: SSE streaming responses + latency benchmark
+- day10/ — SQLite chat persistence + ChromaDB persistent index
+- day 11/ — Web chat UI with upload panel
+- day 12/ — Docker + GitHub Actions CI
+- day 13/ — SSE streaming responses + latency benchmark
