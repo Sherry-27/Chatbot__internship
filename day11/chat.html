@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>NexusChat</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; height: 100vh; display: flex; flex-direction: column; }
+header { background: #0D2B55; color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+header h1 { font-size: 1.3rem; font-weight: 700; }
+#status-dot { width: 10px; height: 10px; border-radius: 50%; background: #4caf50; display: inline-block; margin-right: 6px; }
+#status-text { font-size: 0.8rem; color: #90caf9; }
+.main { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 260px; background: #1a3a6b; display: flex; flex-direction: column; padding: 16px; gap: 12px; overflow-y: auto; }
+.sidebar h2 { color: #90caf9; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+#new-chat-btn { background: #1565C0; color: white; border: none; border-radius: 8px; padding: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+#new-chat-btn:hover { background: #1976D2; }
+#session-info { background: rgba(255,255,255,0.07); border-radius: 6px; padding: 10px; color: #cfd8dc; font-size: 0.78rem; word-break: break-all; }
+#chunks-badge { background: rgba(255,255,255,0.1); color: #b3e5fc; border-radius: 6px; padding: 8px 10px; font-size: 0.8rem; }
+.upload-section { display: flex; flex-direction: column; gap: 8px; }
+.upload-section input { padding: 6px 8px; border-radius: 6px; border: none; font-size: 0.8rem; }
+.upload-section textarea { padding: 6px 8px; border-radius: 6px; border: none; font-size: 0.8rem; height: 80px; resize: none; }
+.upload-section button { background: #0288d1; color: white; border: none; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+#upload-status { color: #80cbc4; font-size: 0.75rem; }
+.chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.message { display: flex; flex-direction: column; max-width: 75%; }
+.message.user { align-self: flex-end; align-items: flex-end; }
+.message.bot { align-self: flex-start; align-items: flex-start; }
+.bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.55; white-space: pre-wrap; }
+.message.user .bubble { background: #1565C0; color: white; border-bottom-right-radius: 4px; }
+.message.bot .bubble { background: white; color: #212121; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+.typing-indicator { display: flex; gap: 5px; padding: 14px 18px; }
+.typing-indicator span { width: 8px; height: 8px; background: #90a4ae; border-radius: 50%; animation: bounce 1.2s infinite; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
+.sources { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.source-tag { background: #e3f0fb; color: #1565C0; border: 1px solid #90caf9; border-radius: 12px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.input-bar { padding: 16px 24px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; align-items: flex-end; }
+#question-input { flex: 1; border: 1.5px solid #cfd8dc; border-radius: 12px; padding: 10px 14px; font-size: 0.95rem; resize: none; outline: none; max-height: 120px; transition: border-color 0.2s; }
+#question-input:focus { border-color: #1565C0; }
+#send-btn { background: #1565C0; color: white; border: none; border-radius: 12px; padding: 10px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+#send-btn:hover:not(:disabled) { background: #1976D2; }
+#send-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NexusChat</h1>
+  <div><span id='status-dot'></span><span id='status-text'>Connecting...</span></div>
+</header>
+<div class='main'>
+  <aside class='sidebar'>
+    <button id='new-chat-btn'>+ New Chat</button>
+    <h2>Session</h2>
+    <div id='session-info'>No session yet</div>
+    <h2>Index</h2>
+    <div id='chunks-badge'>Loading...</div>
+    <h2>Upload Document</h2>
+    <div class='upload-section'>
+      <input id='upload-filename' placeholder='filename.txt' />
+      <textarea id='upload-content' placeholder='Paste document content here...'></textarea>
+      <button id='upload-btn'>Upload</button>
+      <div id='upload-status'></div>
+    </div>
+  </aside>
+  <div class='chat-area'>
+    <div id='messages'></div>
+    <div class='input-bar'>
+      <textarea id='question-input' rows='1' placeholder='Ask a question about your documents...'></textarea>
+      <button id='send-btn'>Send</button>
+    </div>
+  </div>
+</div>
+<script>
+const API_BASE = '';
+let sessionId = null;
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('question-input');
+const sendBtn = document.getElementById('send-btn');
+const sessionInfo = document.getElementById('session-info');
+const chunksBadge = document.getElementById('chunks-badge');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API_BASE}/health`);
+    const data = await r.json();
+    statusDot.style.background = '#4caf50';
+    statusText.textContent = 'Connected';
+    chunksBadge.textContent = `${data.chunks_indexed} chunks indexed`;
+  } catch {
+    statusDot.style.background = '#f44336';
+    statusText.textContent = 'Disconnected';
+  }
+}
+
+function appendMessage(role, text, sources) {
+  const wrapper = document.createElement('div');
+  wrapper.className = `message ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  wrapper.appendChild(bubble);
+  if (sources && sources.length > 0) {
+    const sourcesEl = document.createElement('div');
+    sourcesEl.className = 'sources';
+    const unique = [...new Set(sources.map(s => s.source))];
+    unique.forEach(src => {
+      const tag = document.createElement('span');
+      tag.className = 'source-tag';
+      tag.textContent = src;
+      sourcesEl.appendChild(tag);
+    });
+    wrapper.appendChild(sourcesEl);
+  }
+  messagesEl.appendChild(wrapper);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showTyping() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message bot';
+  wrapper.id = 'typing-indicator';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble typing-indicator';
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+  wrapper.appendChild(bubble);
+  messagesEl.appendChild(wrapper);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendQuestion() {
+  const question = inputEl.value.trim();
+  if (!question) return;
+  inputEl.value = '';
+  sendBtn.disabled = true;
+  appendMessage('user', question, null);
+  showTyping();
+  try {
+    const body = { question };
+    if (sessionId) body.session_id = sessionId;
+    const r = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    hideTyping();
+    if (!r.ok) {
+      const err = await r.json();
+      appendMessage('bot', `Error: ${err.detail}`, null);
+      return;
+    }
+    const data = await r.json();
+    if (!sessionId) {
+      sessionId = data.session_id;
+      sessionInfo.textContent = sessionId;
+    }
+    appendMessage('bot', data.answer, data.sources);
+  } catch (e) {
+    hideTyping();
+    appendMessage('bot', 'Failed to connect to server.', null);
+  } finally {
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+document.getElementById('new-chat-btn').addEventListener('click', () => {
+  sessionId = null;
+  sessionInfo.textContent = 'No session yet';
+  messagesEl.innerHTML = '';
+  appendMessage('bot', 'New chat started! Ask me anything about your documents.', null);
+});
+
+sendBtn.addEventListener('click', sendQuestion);
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
+});
+
+document.getElementById('upload-btn').addEventListener('click', async () => {
+  const filename = document.getElementById('upload-filename').value.trim();
+  const content = document.getElementById('upload-content').value.trim();
+  const status = document.getElementById('upload-status');
+  if (!filename || !content) { status.textContent = 'Please enter filename and content.'; return; }
+  status.textContent = 'Uploading...';
+  try {
+    const r = await fetch(`${API_BASE}/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, content }),
+    });
+    const data = await r.json();
+    status.textContent = `✅ Added ${data.chunks_added} chunks. Total: ${data.total_chunks}`;
+    chunksBadge.textContent = `${data.total_chunks} chunks indexed`;
+  } catch {
+    status.textContent = '❌ Upload failed.';
+  }
+});
+
+checkHealth();
+appendMessage('bot', 'Welcome to NexusChat! Ask me anything about your documents.', null);
+</script>
+</body>
+</html>
