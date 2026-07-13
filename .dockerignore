@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+rag-env/
+.venv/
+venv/
+.env
+.git/
+.gitignore
+day10/chroma_store/
+day10/chat_history.db
+day10/doc_hashes.json
+.vscode/
+*.DS_Store
