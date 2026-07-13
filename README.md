@@ -99,7 +99,7 @@ docker compose up -d
 # Visit http://localhost:8000
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 day2/  — Document ingestion (PyMuPDF, python-docx)
