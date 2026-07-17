@@ -77,6 +77,18 @@ header h1 { font-size: 1.3rem; font-weight: 700; }
 <script>
 const API_BASE = '';
 let sessionId = null;
+
+// API Key management
+let API_KEY = localStorage.getItem('nexuschat_api_key') || '';
+if (!API_KEY) {
+  API_KEY = prompt('Enter your NexusChat API key:') || '';
+  if (API_KEY) localStorage.setItem('nexuschat_api_key', API_KEY);
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'X-API-Key': API_KEY };
+}
+
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('question-input');
 const sendBtn = document.getElementById('send-btn');
@@ -87,7 +99,7 @@ const statusText = document.getElementById('status-text');
 
 async function checkHealth() {
   try {
-    const r = await fetch(`${API_BASE}/health`);
+    const r = await fetch(`${API_BASE}/health`, { headers: authHeaders() });
     const data = await r.json();
     statusDot.style.background = '#4caf50';
     statusText.textContent = 'Connected';
@@ -150,10 +162,15 @@ async function sendQuestion() {
     if (sessionId) body.session_id = sessionId;
     const r = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify(body),
     });
     hideTyping();
+    if (r.status === 429) {
+      const err = await r.json();
+      appendMessage('bot', `⚠️ Too many requests. Please wait ${err.retry_after} seconds.`, null);
+      return;
+    }
     if (!r.ok) {
       const err = await r.json();
       appendMessage('bot', `Error: ${err.detail}`, null);
@@ -195,7 +212,7 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
   try {
     const r = await fetch(`${API_BASE}/ingest`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ filename, content }),
     });
     const data = await r.json();
