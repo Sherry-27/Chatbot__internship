@@ -114,6 +114,7 @@ day10/ — SQLite persistence + persistent index caching
 day11/ — Web chat UI (HTML/CSS/JS)
 day12/ — Docker containerization + GitHub Actions CI
 day13/ — SSE streaming responses + latency benchmarking
+day14/ — API key authentication + rate limiting + security tests
 
 notes/ — Daily learning reflections & observations
 ```
