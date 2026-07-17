@@ -4,18 +4,12 @@ import sys
 import uuid
 import google.generativeai as genai
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 from dotenv import load_dotenv
 import uvicorn
-
-from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from day13.streaming import stream_answer
-
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -28,23 +22,44 @@ from day6.hybrid_retriever import HybridRetriever, reciprocal_rank_fusion
 from day7.reranker import rerank
 from day10.chat_store import initialise_db, save_turn, get_session_history, list_all_sessions, delete_session
 from day10.persistent_index import smart_startup
+from day13.streaming import stream_answer
+from day14.auth import APIKeyMiddleware, generate_api_key, load_keys
+from day14.rate_limiter import RateLimitMiddleware
 
 load_dotenv()
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
 app = FastAPI(title='NexusChat Persistent API', version='2.0.0')
 
-app.mount('/static', StaticFiles(directory='day11'), name='static')
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(APIKeyMiddleware)
 
-@app.get('/')
-def serve_ui():
-    return FileResponse('day11/chat.html')
+app.mount('/static', StaticFiles(directory='day11'), name='static')
 
 STARTUP_DOCUMENTS = ['day2/sample.txt', 'day2/sample.pdf', 'day2/sample.docx', 'day2/sample2.txt']
 
 dense_collection = None
 bm25_retriever = None
 total_chunks = 0
+
+@app.get('/')
+def serve_ui():
+    return FileResponse('day11/chat.html')
+
+@app.post('/admin/keys')
+def create_api_key(label: str, admin_secret: str):
+    expected = os.getenv('ADMIN_SECRET', 'change-me-in-production')
+    if admin_secret != expected:
+        raise HTTPException(status_code=403, detail='Invalid admin secret.')
+    new_key = generate_api_key(label)
+    return {'key': new_key, 'label': label, 'warning': 'Save this key now.'}
+
+@app.get('/admin/keys')
+def list_api_keys(admin_secret: str):
+    expected = os.getenv('ADMIN_SECRET', 'change-me-in-production')
+    if admin_secret != expected:
+        raise HTTPException(status_code=403, detail='Invalid admin secret.')
+    return load_keys()
 
 @app.on_event('startup')
 async def startup():
@@ -95,7 +110,7 @@ class IngestResponse(BaseModel):
 @app.get('/health')
 def health():
     sessions = list_all_sessions()
-    return {'status': 'ok', 'version': '2.0.0', 'chunks_indexed': total_chunks, 'total_sessions': len(sessions), 'storage': 'persistent (SQLite + ChromaDB PersistentClient)'}
+    return {'status': 'ok', 'version': '2.0.0', 'chunks_indexed': total_chunks, 'total_sessions': len(sessions), 'storage': 'persistent'}
 
 @app.post('/chat', response_model=ChatResponse)
 def chat(request: ChatRequest):
@@ -120,7 +135,6 @@ def chat(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post('/chat/stream')
 def chat_stream(request: ChatRequest):
     session_id = request.session_id or str(uuid.uuid4())
@@ -142,15 +156,14 @@ def chat_stream(request: ChatRequest):
         session_captured = session_id
         full_answer = []
         def generate_and_save():
-            import json as _json
             for event in stream_answer(question_captured, chunks):
                 try:
-                    data = _json.loads(event.replace('data: ', '').strip())
+                    data = json.loads(event.replace('data: ', '').strip())
                     if 'token' in data:
                         full_answer.append(data['token'])
                     if data.get('done'):
                         save_turn(session_captured, question_captured, ''.join(full_answer))
-                        yield f'data: {_json.dumps({"done": True, "session_id": session_captured})}\n\n'
+                        yield f'data: {json.dumps({"done": True, "session_id": session_captured})}\n\n'
                         return
                 except Exception:
                     pass
@@ -159,7 +172,7 @@ def chat_stream(request: ChatRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))        
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/sessions')
 def sessions():
